@@ -371,11 +371,16 @@ def evaluation(
         del images
 
     dist.print0('Evaluating few-step generation...')
-    for _ in range(3):
-        for metric in metrics:
+    for i in range(3):
+        dist.print0(f'No. {i} pass of all metrics...')
+        for metric in metrics: # ['fid50k_full', 'pr50k3_full']
+            # DEBUG
+            # breakpoint()
+            dist.print0(f'Evaluating {metric}')
             result_dict = metric_main.calc_metric(metric=metric, 
                 generator_fn=few_step_fn, G=net, G_kwargs={},
                 dataset_kwargs=dataset_kwargs, num_gpus=dist.get_world_size(), rank=dist.get_rank(), device=device)
+            # breakpoint()
             if dist.get_rank() == 0:
                 metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=f'{resume_pkl}')
 

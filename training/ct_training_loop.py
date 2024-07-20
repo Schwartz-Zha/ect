@@ -131,6 +131,14 @@ def training_loop(
     enable_tf32         = False,     # Enable tf32 for A100/H100 GPUs?
     device              = torch.device('cuda'),
 ):
+    # #DEBUG
+    # dist.print0(f'kimg_per_tick = {kimg_per_tick}')
+    # dist.print0(f'eval_ticks = {eval_ticks}')
+    # dist.print0(f'resume_tick = {resume_tick}')
+    # dist.print0(f'metrics = {metrics}')
+
+    # breakpoint()
+
     # Initialize.
     start_time = time.time()
     np.random.seed((seed * dist.get_world_size() + dist.get_rank()) % (1 << 31))
@@ -185,7 +193,8 @@ def training_loop(
         dist.print0(f'Loading network weights from "{resume_pkl}"...')
         if dist.get_rank() != 0:
             torch.distributed.barrier() # rank 0 goes first
-        with dnnlib.util.open_url(resume_pkl, verbose=(dist.get_rank() == 0)) as f:
+        # with dnnlib.util.open_url(resume_pkl, verbose=(dist.get_rank() == 0)) as f:
+        with open(resume_pkl, "rb") as f:
             data = pickle.load(f)
         if dist.get_rank() == 0:
             torch.distributed.barrier() # other ranks follow
@@ -354,12 +363,18 @@ def training_loop(
             if dist.get_rank() == 0:
                 metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=f'network-snapshot-{cur_tick:06d}.pkl')                        
             
+            # DEBUG
+            dist.print0('fid50k_full evaluation finished')
+
             few_step_fn = functools.partial(generator_fn, mid_t=mid_t)
             result_dict = metric_main.calc_metric(metric='two_step_fid50k_full', 
                     generator_fn=few_step_fn, G=ema, G_kwargs={},
                     dataset_kwargs=dataset_kwargs, num_gpus=dist.get_world_size(), rank=dist.get_rank(), device=device)
             if dist.get_rank() == 0:
-                metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=f'network-snapshot-{cur_tick:06d}.pkl')                        
+                metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=f'network-snapshot-{cur_tick:06d}.pkl')
+
+            # DEBUG
+            dist.print0('two_step_fid50k_full evaluation finished')
 
         # Update logs.
         training_stats.default_collector.update()

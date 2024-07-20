@@ -169,3 +169,6 @@ ct-evals
 slurm*
 debug.sh
 *.out
+
+edm-cifar10-32x32-uncond-vp.pkl
+edm-imagenet-64x64-cond-adm.pkl
